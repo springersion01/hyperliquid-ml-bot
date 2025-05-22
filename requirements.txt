@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pandas
+numpy
+xgboost
+httpx
+hyperliquid
+scikit-learn
+python-dotenv
