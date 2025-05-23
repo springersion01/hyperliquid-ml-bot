@@ -4,6 +4,7 @@ import numpy as np
 from dotenv import load_dotenv
 from hyperliquid import Wallet, Exchange
 import pickle
+import requests
 from utils import fetch_latest_candles, compute_features
 
 load_dotenv()
@@ -12,10 +13,27 @@ load_dotenv()
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 POLYGON_API_KEY = os.getenv("POLYGON_API_KEY")
 
+# Model download helper
+def download_model(url, local_path):
+    if not os.path.exists(local_path):
+        print(f"Downloading {local_path} from {url}")
+        response = requests.get(url)
+        with open(local_path, 'wb') as f:
+            f.write(response.content)
+
+# Download models if not present
+long_url = "https://hyperliquid-models.s3.ap-southeast-1.amazonaws.com/long_model_xgb.pkl"
+short_url = "https://hyperliquid-models.s3.ap-southeast-1.amazonaws.com/short_model_xgb.pkl"
+long_model_path = "app/models/long_model_xgb.pkl"
+short_model_path = "app/models/short_model_xgb.pkl"
+
+download_model(long_url, long_model_path)
+download_model(short_url, short_model_path)
+
 # Load models
-with open("app/models/long_model_xgb_v2.pkl", "rb") as f:
+with open(long_model_path, "rb") as f:
     long_model = pickle.load(f)
-with open("app/models/short_model_xgb.pkl", "rb") as f:
+with open(short_model_path, "rb") as f:
     short_model = pickle.load(f)
 
 # Hyperliquid setup
