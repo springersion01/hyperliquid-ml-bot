@@ -17,7 +17,7 @@ load_dotenv()
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 POLYGON_API_KEY = os.getenv("POLYGON_API_KEY")
 
-# Model download helper
+# === Model download helper ===
 def download_model(url, local_path):
     try:
         if not os.path.exists(local_path):
@@ -32,13 +32,13 @@ def download_model(url, local_path):
         logging.error(f"❌ Failed to download {url}: {e}")
         raise
 
-# URLs
+# === Model URLs ===
 long_url = "https://hyperliquid-models.s3.ap-southeast-1.amazonaws.com/long_model_xgb.pkl"
 short_url = "https://hyperliquid-models.s3.ap-southeast-1.amazonaws.com/short_model_xgb.pkl"
 long_model_path = "models/long_model_xgb.pkl"
 short_model_path = "models/short_model_xgb.pkl"
 
-# Download and load models
+# === Load models ===
 try:
     download_model(long_url, long_model_path)
     with open(long_model_path, "rb") as f:
@@ -57,7 +57,7 @@ except Exception as e:
     logging.error("❌ Failed to load short model: %s", e)
     short_model = None
 
-# Hyperliquid setup
+# === Initialize wallet & exchange ===
 try:
     wallet = Wallet.from_private_key(PRIVATE_KEY)
     exchange = Exchange(wallet)
@@ -66,12 +66,16 @@ except Exception as e:
     logging.error("❌ Failed to initialize Hyperliquid wallet: %s", e)
     exchange = None
 
-# Fetch candle data
+# === Fetch candles from Polygon ===
 def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timespan="minute", limit=100):
     url = f"https://api.polygon.io/v2/aggs/ticker/X:{symbol}/range/{multiplier}/{timespan}/now"
     params = {"apiKey": polygon_api_key, "limit": limit}
     try:
         response = requests.get(url, params=params, timeout=10)
+        logging.info(f"📦 Polygon raw response (truncated): {response.text[:200]}")
+        if 'application/json' not in response.headers.get('Content-Type', ''):
+            logging.error("❌ Unexpected content type. Possibly HTML or error page.")
+            return pd.DataFrame()
         data = response.json()
         if not data.get("results"):
             logging.error("❌ Polygon API returned no results")
@@ -92,7 +96,7 @@ def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timesp
         })
     return pd.DataFrame(bars)
 
-# Compute features
+# === Technical indicators ===
 def compute_features(df):
     df = df.copy()
     if "close" not in df.columns:
@@ -132,19 +136,24 @@ def ta_rsi(series, period=14):
     rs = avg_gain / avg_loss.replace(0, np.nan)
     return 100 - (100 / (1 + rs))
 
-# Main trading logic
+# === Trading Logic ===
 def run_trading_logic():
     if long_model is None or short_model is None or exchange is None:
         return {"status": "error", "message": "Model or wallet initialization failed."}
 
     df = fetch_latest_candles(POLYGON_API_KEY)
 
-    if df.empty or "close" not in df.columns:
-        return {"status": "error", "message": "'close'"}
+    if df.empty:
+        return {"status": "error", "message": "Empty DataFrame from Polygon"}
+
+    if "close" not in df.columns:
+        logging.error(f"❌ Missing 'close' column. Columns found: {df.columns.tolist()}")
+        return {"status": "error", "message": "Missing 'close' column"}
 
     try:
         df = compute_features(df)
     except Exception as e:
+        logging.error(f"❌ Feature computation error: {e}")
         return {"status": "error", "message": f"Feature error: {e}"}
 
     if len(df) < 20:
@@ -190,3 +199,4 @@ def run_trading_logic():
         "confidence": long_conf if side == "buy" else short_conf,
         "order_result": order
     }
+
