@@ -3,10 +3,9 @@ uvicorn
 pandas
 numpy
 xgboost
-httpx
-hyperliquid
 scikit-learn
+httpx
 python-dotenv
 requests
-git+https://github.com/hyperliquid-markets/python-sdk.git
+git+https://github.com/Hyperliquid-Labs/python-sdk.git
 
