@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import numpy as np
+from datetime import datetime, timedelta
+
 from dotenv import load_dotenv
 from hyperliquid.wallet import Wallet
 from hyperliquid.exchange import Exchange
@@ -68,7 +70,15 @@ except Exception as e:
 
 # === Fetch candles from Polygon ===
 def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timespan="minute", limit=100):
-    url = f"https://api.polygon.io/v2/aggs/ticker/X:{symbol}/range/{multiplier}/{timespan}/now"
+
+end = datetime.utcnow()
+start = end - timedelta(minutes=multiplier * limit)
+
+start_str = start.strftime("%Y-%m-%d")
+end_str = end.strftime("%Y-%m-%d")
+
+url = f"https://api.polygon.io/v2/aggs/ticker/X:{symbol}/range/{multiplier}/{timespan}/{start_str}/{end_str}"
+
     params = {"apiKey": polygon_api_key, "limit": limit}
     try:
         response = requests.get(url, params=params, timeout=10)
