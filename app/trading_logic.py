@@ -156,9 +156,10 @@ def run_trading_logic():
         "trend_ema", "trend_ema_roc", "rel_volume",
         "pos_above_support", "pos_below_resistance", "hour", "dayofweek"
     ]
-    seq = df.iloc[-20:][features].values
+    seq = df.iloc[-20:][features].astype(float).values
     if np.isnan(seq).any():
-        return {"status": "error", "message": "NaNs in input sequence"}
+        return "NaNs in input sequence"
+
     X = seq.reshape(1, -1)
     long_pred = long_model.predict(X)[0]
     long_conf = long_model.predict_proba(X)[0][1]
