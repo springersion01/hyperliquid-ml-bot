@@ -66,15 +66,18 @@ except Exception as e:
     logging.error("❌ Failed to initialize Hyperliquid wallet: %s", e)
     exchange = None
 
-# Replace external utils dependency with inline functions
+# Fetch candle data
 def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timespan="minute", limit=100):
     url = f"https://api.polygon.io/v2/aggs/ticker/X:{symbol}/range/{multiplier}/{timespan}/now"
     params = {"apiKey": polygon_api_key, "limit": limit}
     try:
         response = requests.get(url, params=params, timeout=10)
         data = response.json()
+        if not data.get("results"):
+            logging.error("❌ Polygon API returned no results")
+            return pd.DataFrame()
     except Exception as e:
-        logging.error(f"Failed to fetch candles: {e}")
+        logging.error(f"❌ Failed to fetch candles: {e}")
         return pd.DataFrame()
 
     bars = []
@@ -89,8 +92,12 @@ def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timesp
         })
     return pd.DataFrame(bars)
 
+# Compute features
 def compute_features(df):
     df = df.copy()
+    if "close" not in df.columns:
+        raise ValueError("Missing 'close' column in DataFrame")
+
     df["rsi"] = df["close"].rolling(14).apply(lambda x: ta_rsi(x), raw=False)
     df["ad"] = (2 * df["close"] - df["low"] - df["high"]) / (df["high"] - df["low"]).replace(0, 1) * df["volume"]
     df["ad"] = df["ad"].cumsum()
@@ -125,15 +132,23 @@ def ta_rsi(series, period=14):
     rs = avg_gain / avg_loss.replace(0, np.nan)
     return 100 - (100 / (1 + rs))
 
+# Main trading logic
 def run_trading_logic():
     if long_model is None or short_model is None or exchange is None:
-        return "❌ One or more critical components failed to load."
+        return {"status": "error", "message": "Model or wallet initialization failed."}
 
     df = fetch_latest_candles(POLYGON_API_KEY)
-    df = compute_features(df)
+
+    if df.empty or "close" not in df.columns:
+        return {"status": "error", "message": "'close'"}
+
+    try:
+        df = compute_features(df)
+    except Exception as e:
+        return {"status": "error", "message": f"Feature error: {e}"}
 
     if len(df) < 20:
-        return "Not enough data"
+        return {"status": "error", "message": "Not enough data"}
 
     features = [
         "close", "volume", "rsi", "rsi_roc", "ad", "ad_roc",
@@ -144,7 +159,7 @@ def run_trading_logic():
 
     seq = df.iloc[-20:][features].values
     if np.isnan(seq).any():
-        return "NaNs in input sequence"
+        return {"status": "error", "message": "NaNs in input sequence"}
 
     X = seq.reshape(1, -1)
     long_pred = long_model.predict(X)[0]
@@ -160,13 +175,16 @@ def run_trading_logic():
     elif short_pred == 1 and long_pred == 0:
         side = "sell"
     else:
-        return "No trade signal"
+        return {"status": "ok", "message": "No trade signal"}
 
-    # Place order with fixed amount for now
-    size = 0.5  # replace with dynamic sizing if needed
-    order = exchange.order(coin=coin, is_buy=(side=="buy"), sz=size, limit_px=None, reduce_only=False)
+    size = 0.5
+    try:
+        order = exchange.order(coin=coin, is_buy=(side == "buy"), sz=size, limit_px=None, reduce_only=False)
+    except Exception as e:
+        return {"status": "error", "message": f"Order failed: {e}"}
 
     return {
+        "status": "success",
         "coin": coin,
         "side": side,
         "confidence": long_conf if side == "buy" else short_conf,
