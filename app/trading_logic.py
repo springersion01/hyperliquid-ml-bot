@@ -114,7 +114,7 @@ def compute_features(df):
     if "close" not in df.columns:
         raise ValueError("Missing 'close' column in DataFrame")
 
-    df["rsi"] = df["close"].rolling(14).apply(lambda x: ta_rsi(x), raw=False)
+    df["rsi"] = ta_rsi(df["close"])
     df["ad"] = (2 * df["close"] - df["low"] - df["high"]) / (df["high"] - df["low"]).replace(0, 1) * df["volume"]
     df["ad"] = df["ad"].cumsum()
     df["ad_ema"] = df["ad"].ewm(span=12).mean()
