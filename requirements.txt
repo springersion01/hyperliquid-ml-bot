@@ -8,3 +8,5 @@ hyperliquid
 scikit-learn
 python-dotenv
 requests
+git+https://github.com/hyperliquid-markets/python-sdk.git
+
