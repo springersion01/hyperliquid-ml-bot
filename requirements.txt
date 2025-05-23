@@ -7,3 +7,4 @@ httpx
 hyperliquid
 scikit-learn
 python-dotenv
+requests
