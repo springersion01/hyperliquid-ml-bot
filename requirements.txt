@@ -7,5 +7,4 @@ scikit-learn
 httpx
 python-dotenv
 requests
-git+https://github.com/Hyperliquid-Labs/python-sdk.git
 
