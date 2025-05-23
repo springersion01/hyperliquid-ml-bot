@@ -69,7 +69,7 @@ except Exception as e:
     exchange = None
 
 # === Fetch candles from Polygon ===
-def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timespan="minute", limit=300):
+def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timespan="minute", limit=500):
     end = datetime.utcnow()
     start = end - timedelta(minutes=multiplier * limit)
     start_str = start.strftime("%Y-%m-%d")
