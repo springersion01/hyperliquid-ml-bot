@@ -70,6 +70,7 @@ except Exception as e:
 
 # === Fetch candles from Polygon ===
 def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timespan="minute", limit=200):
+    logging.info(f"✅ Polygon returned {len(df)} bars")
     end = datetime.utcnow()
     start = end - timedelta(minutes=multiplier * limit)
     start_str = start.strftime("%Y-%m-%d")
