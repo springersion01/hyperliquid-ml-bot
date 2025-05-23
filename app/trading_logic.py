@@ -2,7 +2,8 @@ import os
 import pandas as pd
 import numpy as np
 from dotenv import load_dotenv
-from hyperliquid import Wallet, Exchange
+from hyperliquid.wallet import Wallet
+from hyperliquid.exchange import Exchange
 import pickle
 import requests
 import logging
