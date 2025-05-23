@@ -69,7 +69,7 @@ except Exception as e:
     exchange = None
 
 # === Fetch candles from Polygon ===
-def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timespan="minute", limit=200):
+def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timespan="minute", limit=300):
     end = datetime.utcnow()
     start = end - timedelta(minutes=multiplier * limit)
     start_str = start.strftime("%Y-%m-%d")
@@ -153,9 +153,9 @@ def run_trading_logic():
     if long_model is None or short_model is None or exchange is None:
         return {"status": "error", "message": "Model or wallet initialization failed."}
 
-    # Fetch data once with proper limit
-    df = fetch_latest_candles(POLYGON_API_KEY, limit=200)
-    logging.info(f"✅ Polygon returned {len(df)} bars")
+    # Fetch more candles to ensure enough data after indicator computation
+    df = fetch_latest_candles(POLYGON_API_KEY, limit=300)
+    logging.info(f"✅ Polygon returned {len(df)} raw bars")
 
     if df.empty:
         return {"status": "error", "message": "Empty DataFrame from Polygon"}
@@ -166,12 +166,15 @@ def run_trading_logic():
 
     try:
         df = compute_features(df)
+        logging.info(f"📊 Data shape before dropna: {df.shape}")
+        df = df.dropna()
+        logging.info(f"🧮 Valid rows after dropna: {len(df)}")
     except Exception as e:
         logging.error(f"❌ Feature computation error: {e}")
         return {"status": "error", "message": f"Feature error: {e}"}
 
     if len(df) < 20:
-        return {"status": "error", "message": f"Not enough data: only {len(df)} rows after features"}
+        return {"status": "error", "message": f"Not enough valid rows: {len(df)} after dropna()"}
 
     features = [
         "close", "volume", "rsi", "rsi_roc", "ad", "ad_roc",
@@ -213,3 +216,4 @@ def run_trading_logic():
         "confidence": long_conf if side == "buy" else short_conf,
         "order_result": order
     }
+
