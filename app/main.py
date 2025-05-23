@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from trading_logic import run_trading_logic
+from .trading_logic import run_trading_logic
 
 app = FastAPI()
 
