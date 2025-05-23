@@ -5,9 +5,11 @@ from dotenv import load_dotenv
 from hyperliquid import Wallet, Exchange
 import pickle
 import requests
+import logging
 from utils import fetch_latest_candles, compute_features
 
-print("🔁 Starting model setup...")
+logging.basicConfig(level=logging.INFO)
+logging.info("🔁 Starting model setup...")
 
 load_dotenv()
 
@@ -19,49 +21,49 @@ POLYGON_API_KEY = os.getenv("POLYGON_API_KEY")
 def download_model(url, local_path):
     try:
         if not os.path.exists(local_path):
-            print(f"⬇️ Downloading model from {url} ...")
+            logging.info(f"⬇️ Downloading model from {url} ...")
             response = requests.get(url, timeout=5)
             response.raise_for_status()
             with open(local_path, 'wb') as f:
                 f.write(response.content)
         else:
-            print(f"✅ Model already exists at {local_path}")
+            logging.info(f"✅ Model already exists at {local_path}")
     except Exception as e:
-        print(f"❌ Failed to download {url}: {e}")
+        logging.error(f"❌ Failed to download {url}: {e}")
         raise
 
 # URLs
 long_url = "https://hyperliquid-models.s3.ap-southeast-1.amazonaws.com/long_model_xgb.pkl"
 short_url = "https://hyperliquid-models.s3.ap-southeast-1.amazonaws.com/short_model_xgb.pkl"
-long_model_path = "app/models/long_model_xgb.pkl"
-short_model_path = "app/models/short_model_xgb.pkl"
+long_model_path = "models/long_model_xgb.pkl"
+short_model_path = "models/short_model_xgb.pkl"
 
 # Download and load models
 try:
     download_model(long_url, long_model_path)
     with open(long_model_path, "rb") as f:
         long_model = pickle.load(f)
-    print("✅ Long model loaded")
+    logging.info("✅ Long model loaded")
 except Exception as e:
-    print("❌ Failed to load long model:", e)
+    logging.error("❌ Failed to load long model: %s", e)
     long_model = None
 
 try:
     download_model(short_url, short_model_path)
     with open(short_model_path, "rb") as f:
         short_model = pickle.load(f)
-    print("✅ Short model loaded")
+    logging.info("✅ Short model loaded")
 except Exception as e:
-    print("❌ Failed to load short model:", e)
+    logging.error("❌ Failed to load short model: %s", e)
     short_model = None
 
 # Hyperliquid setup
 try:
     wallet = Wallet.from_private_key(PRIVATE_KEY)
     exchange = Exchange(wallet)
-    print("✅ Hyperliquid wallet initialized")
+    logging.info("✅ Hyperliquid wallet initialized")
 except Exception as e:
-    print("❌ Failed to initialize Hyperliquid wallet:", e)
+    logging.error("❌ Failed to initialize Hyperliquid wallet: %s", e)
     exchange = None
 
 def run_trading_logic():
