@@ -70,16 +70,14 @@ except Exception as e:
 
 # === Fetch candles from Polygon ===
 def fetch_latest_candles(polygon_api_key, symbol="SOLUSD", multiplier=15, timespan="minute", limit=100):
+    end = datetime.utcnow()
+    start = end - timedelta(minutes=multiplier * limit)
+    start_str = start.strftime("%Y-%m-%d")
+    end_str = end.strftime("%Y-%m-%d")
 
-end = datetime.utcnow()
-start = end - timedelta(minutes=multiplier * limit)
-
-start_str = start.strftime("%Y-%m-%d")
-end_str = end.strftime("%Y-%m-%d")
-
-url = f"https://api.polygon.io/v2/aggs/ticker/X:{symbol}/range/{multiplier}/{timespan}/{start_str}/{end_str}"
-
+    url = f"https://api.polygon.io/v2/aggs/ticker/X:{symbol}/range/{multiplier}/{timespan}/{start_str}/{end_str}"
     params = {"apiKey": polygon_api_key, "limit": limit}
+
     try:
         response = requests.get(url, params=params, timeout=10)
         logging.info(f"📦 Polygon raw response (truncated): {response.text[:200]}")
@@ -105,6 +103,7 @@ url = f"https://api.polygon.io/v2/aggs/ticker/X:{symbol}/range/{multiplier}/{tim
             "volume": bar["v"]
         })
     return pd.DataFrame(bars)
+
 
 # === Technical indicators ===
 def compute_features(df):
